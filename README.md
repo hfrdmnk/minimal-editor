@@ -1,8 +1,9 @@
 # Minimal Editor
 
 A tiny native macOS photo editor. Open a photo, apply a `.cube` LUT plus a
-handful of basic tweaks, directional motion blur, a dreamy defocus glow, and a
-dark overlay, then export. Save the whole look as a reusable preset.
+handful of basic tweaks, directional motion blur, a defocus blur (dreamy glow
+or plain), and a dark overlay, then export. Save the whole look as a reusable
+preset.
 
 Built with SwiftUI + Core Image. Every effect is a stock, Metal-accelerated
 `CIFilter`.

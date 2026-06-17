@@ -4,6 +4,12 @@ import Foundation
 /// "Neutral" means the corresponding filter is skipped entirely, so an
 /// untouched photo renders byte-for-byte identical to the source.
 public struct Params: Equatable, Codable {
+    /// How the defocus blur is applied.
+    public enum DefocusMode: String, Codable, CaseIterable {
+        case defocus   // sharp image with a blurred glow halo (the dreamy look)
+        case hardBlur  // a plain Gaussian blur, no glow
+    }
+
     // Light
     public var exposure: Double = 0      // EV, applied by CIExposureAdjust
     public var contrast: Double = 1      // 1 = neutral
@@ -20,7 +26,9 @@ public struct Params: Equatable, Codable {
     // Effects
     public var motionBlurRadius: Double = 0  // px, 0 = off
     public var motionBlurAngle: Double = 0   // degrees
-    public var defocus: Double = 0           // 0 = off, soft-focus "dreamy" glow
+    public var defocusMode: DefocusMode = .defocus
+    public var defocusRadius: Double = 0     // px, 0 = off (out-of-focus blur)
+    public var defocusGlow: Double = 0       // 0...1, glow strength (defocus mode only)
 
     // Overlay (a flat dark wash over the graded image)
     public var overlayOpacity: Double = 0    // 0 = off
@@ -31,8 +39,15 @@ public struct Params: Equatable, Codable {
     private enum CodingKeys: String, CodingKey {
         case exposure, contrast, brightness, highlights, shadows
         case temperature, tint, saturation, vibrance
-        case motionBlurRadius, motionBlurAngle, defocus
+        case motionBlurRadius, motionBlurAngle
+        case defocusMode, defocusRadius, defocusGlow
         case overlayOpacity, overlayHex
+    }
+
+    // `defocus` was one slider that drove both radius and glow; read separately
+    // so the main keys stay 1:1 with the properties and encoding stays synthesized.
+    private enum LegacyCodingKeys: String, CodingKey {
+        case defocus
     }
 
     // Decode tolerantly so presets saved before a field existed still load:
@@ -51,7 +66,16 @@ public struct Params: Equatable, Codable {
         vibrance = try c.decodeIfPresent(Double.self, forKey: .vibrance) ?? d.vibrance
         motionBlurRadius = try c.decodeIfPresent(Double.self, forKey: .motionBlurRadius) ?? d.motionBlurRadius
         motionBlurAngle = try c.decodeIfPresent(Double.self, forKey: .motionBlurAngle) ?? d.motionBlurAngle
-        defocus = try c.decodeIfPresent(Double.self, forKey: .defocus) ?? d.defocus
+        defocusMode = try c.decodeIfPresent(DefocusMode.self, forKey: .defocusMode) ?? d.defocusMode
+        // Defocus was once a single 0...1 slider (radius = defocus * 30, glow =
+        // defocus) in what is now the .defocus mode. Map it onto the pair when
+        // the new keys are absent.
+        let legacyDefocus = try decoder.container(keyedBy: LegacyCodingKeys.self)
+            .decodeIfPresent(Double.self, forKey: .defocus)
+        defocusRadius = try c.decodeIfPresent(Double.self, forKey: .defocusRadius)
+            ?? legacyDefocus.map { $0 * 30 } ?? d.defocusRadius
+        defocusGlow = try c.decodeIfPresent(Double.self, forKey: .defocusGlow)
+            ?? legacyDefocus ?? d.defocusGlow
         overlayOpacity = try c.decodeIfPresent(Double.self, forKey: .overlayOpacity) ?? d.overlayOpacity
         overlayHex = try c.decodeIfPresent(String.self, forKey: .overlayHex) ?? d.overlayHex
     }

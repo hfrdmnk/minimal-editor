@@ -49,7 +49,17 @@ struct ControlsPanel: View {
         ControlSection("Effects") {
             SliderRow("Motion Blur", value: bind(\.motionBlurRadius), in: 0...40, default: 0, format: "%.0f")
             SliderRow("Angle", value: bind(\.motionBlurAngle), in: 0...360, default: 0, format: "%.0f")
-            SliderRow("Defocus", value: bind(\.defocus), in: 0...1, default: 0)
+            Picker("", selection: defocusMode) {
+                Text("Defocus").tag(Params.DefocusMode.defocus)
+                Text("Hard Blur").tag(Params.DefocusMode.hardBlur)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .controlSize(.small)
+            SliderRow("Radius", value: bind(\.defocusRadius), in: 0...40, default: 0, format: "%.0f")
+            if model.params.defocusMode == .defocus {
+                SliderRow("Glow", value: bind(\.defocusGlow), in: 0...1, default: 0)
+            }
             SliderRow("Overlay", value: bind(\.overlayOpacity), in: 0...0.8, default: 0)
             HStack {
                 Text("Overlay Color")
@@ -107,6 +117,13 @@ struct ControlsPanel: View {
         Binding(
             get: { model.params[keyPath: keyPath] },
             set: { model.params[keyPath: keyPath] = $0 }
+        )
+    }
+
+    private var defocusMode: Binding<Params.DefocusMode> {
+        Binding(
+            get: { model.params.defocusMode },
+            set: { model.params.defocusMode = $0 }
         )
     }
 

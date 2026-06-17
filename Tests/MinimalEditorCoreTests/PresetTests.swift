@@ -21,8 +21,8 @@ final class PresetTests: XCTestCase {
         XCTAssertEqual(preset, decoded)
     }
 
-    /// A preset JSON written before `defocus` existed must still decode, with
-    /// the missing field falling back to its neutral default.
+    /// A preset JSON written before the defocus fields existed must still
+    /// decode, with the missing fields falling back to their neutral defaults.
     func testDecodesPresetMissingNewField() throws {
         let json = """
         {
@@ -46,9 +46,24 @@ final class PresetTests: XCTestCase {
         """.data(using: .utf8)!
 
         let decoded = try JSONDecoder().decode(Preset.self, from: json)
-        XCTAssertEqual(decoded.params.defocus, 0)
+        XCTAssertEqual(decoded.params.defocusRadius, 0)
+        XCTAssertEqual(decoded.params.defocusGlow, 0)
+        XCTAssertEqual(decoded.params.defocusMode, .defocus)
         XCTAssertEqual(decoded.params.motionBlurRadius, 8)
         XCTAssertEqual(decoded.params.overlayHex, "#0A1F3C")
+    }
+
+    /// The old single `defocus` slider maps onto the radius/glow pair in the
+    /// .defocus mode, which reproduces its original look.
+    func testMigratesLegacyDefocusField() throws {
+        let json = """
+        { "name": "Legacy Defocus", "params": { "defocus": 0.6 } }
+        """.data(using: .utf8)!
+
+        let decoded = try JSONDecoder().decode(Preset.self, from: json)
+        XCTAssertEqual(decoded.params.defocusMode, .defocus)
+        XCTAssertEqual(decoded.params.defocusRadius, 18, accuracy: 1e-9)
+        XCTAssertEqual(decoded.params.defocusGlow, 0.6, accuracy: 1e-9)
     }
 
     func testStoreSaveLoadDelete() throws {

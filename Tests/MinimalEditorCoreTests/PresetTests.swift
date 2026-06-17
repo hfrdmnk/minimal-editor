@@ -21,6 +21,36 @@ final class PresetTests: XCTestCase {
         XCTAssertEqual(preset, decoded)
     }
 
+    /// A preset JSON written before `defocus` existed must still decode, with
+    /// the missing field falling back to its neutral default.
+    func testDecodesPresetMissingNewField() throws {
+        let json = """
+        {
+          "name": "Legacy",
+          "params": {
+            "exposure": 0.4,
+            "contrast": 1.1,
+            "brightness": 0,
+            "highlights": 1,
+            "shadows": 0,
+            "temperature": 5200,
+            "tint": -12,
+            "saturation": 1.15,
+            "vibrance": 0,
+            "motionBlurRadius": 8,
+            "motionBlurAngle": 90,
+            "overlayOpacity": 0.18,
+            "overlayHex": "#0A1F3C"
+          }
+        }
+        """.data(using: .utf8)!
+
+        let decoded = try JSONDecoder().decode(Preset.self, from: json)
+        XCTAssertEqual(decoded.params.defocus, 0)
+        XCTAssertEqual(decoded.params.motionBlurRadius, 8)
+        XCTAssertEqual(decoded.params.overlayHex, "#0A1F3C")
+    }
+
     func testStoreSaveLoadDelete() throws {
         let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
             .appendingPathComponent("MinimalEditorTests-\(UUID().uuidString)")

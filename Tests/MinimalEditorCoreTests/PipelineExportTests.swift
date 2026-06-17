@@ -25,6 +25,16 @@ final class PipelineExportTests: XCTestCase {
         XCTAssertEqual(out.extent, source.extent)
     }
 
+    /// Defocus runs a Gaussian blur, which also expands the extent; crop it back.
+    func testDefocusKeepsExtent() {
+        let source = CIImage(color: CIColor(red: 0.4, green: 0.4, blue: 0.4))
+            .cropped(to: CGRect(x: 0, y: 0, width: 64, height: 64))
+        var params = Params()
+        params.defocus = 0.6
+        let out = Pipeline.apply(to: source, params: params, lut: nil)
+        XCTAssertEqual(out.extent, source.extent)
+    }
+
     /// Full pipeline through the PNG and JPEG writers, then re-read to confirm
     /// the files are valid images at the original resolution.
     func testExportRoundTrip() throws {

@@ -1,8 +1,8 @@
 # Minimal Editor
 
 A tiny native macOS photo editor. Open a photo, apply a `.cube` LUT plus a
-handful of basic tweaks, directional motion blur, and a dark overlay, then
-export. Save the whole look as a reusable preset.
+handful of basic tweaks, directional motion blur, a dreamy defocus glow, and a
+dark overlay, then export. Save the whole look as a reusable preset.
 
 Built with SwiftUI + Core Image. Every effect is a stock, Metal-accelerated
 `CIFilter`.
@@ -32,7 +32,7 @@ motion-blur extent crop), preset save/load, and PNG/JPEG export.
 
 - **Open** a photo from the toolbar, or drag one onto the canvas.
 - **Adjust** with the sliders on the right, grouped into Light, Color, and
-  Effects. Double-click a slider's label to return it to neutral.
+  Effects. Double-click a slider (or its label) to return it to neutral.
 - **Load a `.cube`** in the LUT section to apply a color grade.
 - **Presets** (toolbar) save and recall the full look, LUT included. They live
   in `~/Library/Application Support/MinimalEditor/presets/`, with each LUT
@@ -49,5 +49,5 @@ motion-blur extent crop), preset save/load, and PNG/JPEG export.
 The render pipeline is one pure function in `Pipeline.swift`:
 `(CIImage, Params, CubeLUT?) -> CIImage`. Fixed order — exposure, white
 balance, highlights/shadows, brightness/contrast/saturation, vibrance, LUT,
-motion blur, overlay — with every stage skipped when its parameters sit at
+motion blur, defocus, overlay — with every stage skipped when its parameters sit at
 neutral, so an untouched photo renders identically to the source.

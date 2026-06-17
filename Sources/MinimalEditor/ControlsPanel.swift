@@ -49,6 +49,7 @@ struct ControlsPanel: View {
         ControlSection("Effects") {
             SliderRow("Motion Blur", value: bind(\.motionBlurRadius), in: 0...40, default: 0, format: "%.0f")
             SliderRow("Angle", value: bind(\.motionBlurAngle), in: 0...360, default: 0, format: "%.0f")
+            SliderRow("Defocus", value: bind(\.defocus), in: 0...1, default: 0)
             SliderRow("Overlay", value: bind(\.overlayOpacity), in: 0...0.8, default: 0)
             HStack {
                 Text("Overlay Color")
@@ -171,12 +172,13 @@ private struct SliderRow: View {
             }
             .font(.system(size: 11))
             .foregroundStyle(.secondary)
-            // Double-click the label to return to neutral.
+            // Double-click the label (or the slider below) to return to neutral.
             .contentShape(Rectangle())
             .onTapGesture(count: 2) { value = defaultValue }
 
             Slider(value: $value, in: range)
                 .controlSize(.small)
+                .simultaneousGesture(TapGesture(count: 2).onEnded { value = defaultValue })
         }
     }
 }

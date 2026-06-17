@@ -65,7 +65,30 @@ public enum Pipeline {
                 .cropped(to: extent)
         }
 
-        // 8. Flat dark overlay
+        // 8. Defocus: a soft-focus "dreamy" glow. Screen-blend a blurred copy
+        // over the sharp image so highlights bloom while detail survives. The
+        // slider drives both the blur radius and the glow strength: the blurred
+        // layer is faded toward black, and screen-blending black is a no-op, so
+        // the effect scales smoothly from none (0) to full (1). Clamp/crop like
+        // the motion blur so the Gaussian doesn't darken the edges.
+        if params.defocus > 0 {
+            let extent = image.extent
+            let soft = image.clampedToExtent()
+                .applyingFilter("CIGaussianBlur", parameters: [
+                    kCIInputRadiusKey: params.defocus * 30,
+                ])
+                .cropped(to: extent)
+                .applyingFilter("CIColorMatrix", parameters: [
+                    "inputRVector": CIVector(x: params.defocus, y: 0, z: 0, w: 0),
+                    "inputGVector": CIVector(x: 0, y: params.defocus, z: 0, w: 0),
+                    "inputBVector": CIVector(x: 0, y: 0, z: params.defocus, w: 0),
+                ])
+            image = soft.applyingFilter("CIScreenBlendMode", parameters: [
+                kCIInputBackgroundImageKey: image,
+            ])
+        }
+
+        // 9. Flat dark overlay
         if params.overlayOpacity > 0 {
             let color = CIColor.fromHex(params.overlayHex, alpha: params.overlayOpacity)
             if let overlay = CIFilter(name: "CIConstantColorGenerator", parameters: [

@@ -83,4 +83,32 @@ final class PresetTests: XCTestCase {
         store.delete("Soft")
         XCTAssertTrue(store.names().isEmpty)
     }
+
+    func testStoreRename() throws {
+        let tmp = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("MinimalEditorTests-\(UUID().uuidString)")
+        let store = PresetStore(directory: tmp)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        var params = Params()
+        params.exposure = 0.3
+        try store.save(Preset(name: "A", params: params, lutFileName: "look.cube"))
+
+        try store.rename("A", to: "B")
+
+        XCTAssertEqual(store.names(), ["B"])
+        let renamed = try store.load("B")
+        XCTAssertEqual(renamed.name, "B")
+        XCTAssertEqual(renamed.params.exposure, 0.3)
+        XCTAssertEqual(renamed.lutFileName, "look.cube")
+
+        // Renaming onto an existing name must throw rather than clobber it.
+        try store.save(Preset(name: "C", params: Params()))
+        XCTAssertThrowsError(try store.rename("B", to: "C")) { error in
+            guard case PresetStoreError.nameTaken = error else {
+                return XCTFail("expected nameTaken, got \(error)")
+            }
+        }
+        XCTAssertEqual(store.names(), ["B", "C"])
+    }
 }

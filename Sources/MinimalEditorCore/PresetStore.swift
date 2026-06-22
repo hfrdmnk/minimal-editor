@@ -1,5 +1,9 @@
 import Foundation
 
+public enum PresetStoreError: Error {
+    case nameTaken
+}
+
 /// Reads and writes presets (and their copied-in LUTs) under
 /// `Application Support/MinimalEditor/presets/`.
 public struct PresetStore {
@@ -40,6 +44,19 @@ public struct PresetStore {
     public func delete(_ name: String) {
         let url = directory.appendingPathComponent(name).appendingPathExtension("json")
         try? FileManager.default.removeItem(at: url)
+    }
+
+    /// Rename a preset, keeping its stored `name` field in sync with the file.
+    /// Throws `PresetStoreError.nameTaken` rather than clobbering an existing preset.
+    public func rename(_ name: String, to newName: String) throws {
+        let dest = directory.appendingPathComponent(newName).appendingPathExtension("json")
+        if FileManager.default.fileExists(atPath: dest.path) {
+            throw PresetStoreError.nameTaken
+        }
+        var preset = try load(name)
+        preset.name = newName
+        try save(preset)
+        delete(name)
     }
 
     /// Absolute URL of a LUT that was copied into the store.

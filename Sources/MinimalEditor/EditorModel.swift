@@ -97,8 +97,43 @@ final class EditorModel: ObservableObject {
     }
 
     func savePreset(named name: String) {
+        if let saved = writePreset(named: name) {
+            status = "Saved preset \"\(saved)\"."
+        }
+    }
+
+    /// Re-save an existing preset from the live editor state.
+    func updatePreset(_ name: String) {
+        if writePreset(named: name) != nil {
+            status = "Updated preset \"\(name)\"."
+        }
+    }
+
+    func deletePreset(_ name: String) {
+        store.delete(name)
+        refreshPresets()
+        status = "Deleted preset \"\(name)\"."
+    }
+
+    func renamePreset(_ name: String, to newName: String) {
+        let trimmed = newName.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty, trimmed != name else { return }
+        do {
+            try store.rename(name, to: trimmed)
+            refreshPresets()
+            status = "Renamed to \"\(trimmed)\"."
+        } catch PresetStoreError.nameTaken {
+            status = "A preset named \"\(trimmed)\" already exists."
+        } catch {
+            status = "Couldn't rename preset."
+        }
+    }
+
+    /// Writes the current params and LUT under `name`. Returns the trimmed name
+    /// on success, or nil if the name was blank or the write failed.
+    private func writePreset(named name: String) -> String? {
         let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
+        guard !trimmed.isEmpty else { return nil }
         var fileName: String?
         if let source = lut?.sourceURL {
             fileName = try? store.importLUT(from: source)
@@ -108,9 +143,10 @@ final class EditorModel: ObservableObject {
         do {
             try store.save(Preset(name: trimmed, params: params, lutFileName: fileName))
             refreshPresets()
-            status = "Saved preset \"\(trimmed)\"."
+            return trimmed
         } catch {
             status = "Couldn't save preset."
+            return nil
         }
     }
 

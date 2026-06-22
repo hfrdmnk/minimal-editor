@@ -7,6 +7,10 @@ struct ContentView: View {
     @State private var newPresetName = ""
     @State private var showingExport = false
     @State private var pendingExport: ExportSettings?
+    @State private var showingPresets = false
+    @State private var renameTarget: String?
+    @State private var renameText = ""
+    @State private var deleteTarget: String?
 
     var body: some View {
         HSplitView {
@@ -29,6 +33,23 @@ struct ContentView: View {
         } message: {
             Text("Saves the current look, including the LUT.")
         }
+        .alert("Rename Preset", isPresented: renamePresented) {
+            TextField("Name", text: $renameText)
+            Button("Cancel", role: .cancel) { renameTarget = nil }
+            Button("Rename") {
+                if let old = renameTarget { model.renamePreset(old, to: renameText) }
+                renameTarget = nil
+            }
+        }
+        .alert("Delete Preset", isPresented: deletePresented, presenting: deleteTarget) { name in
+            Button("Cancel", role: .cancel) { deleteTarget = nil }
+            Button("Delete", role: .destructive) {
+                model.deletePreset(name)
+                deleteTarget = nil
+            }
+        } message: { name in
+            Text("\"\(name)\" will be deleted. This can't be undone.")
+        }
         .sheet(isPresented: $showingExport, onDismiss: {
             if let settings = pendingExport {
                 pendingExport = nil
@@ -49,22 +70,28 @@ struct ContentView: View {
             }
         }
         ToolbarItemGroup(placement: .primaryAction) {
-            Menu("Presets") {
-                if model.presetNames.isEmpty {
-                    Text("No presets yet")
-                } else {
-                    ForEach(model.presetNames, id: \.self) { name in
-                        Button(name) { model.applyPreset(name) }
-                    }
+            Button("Presets") { showingPresets.toggle() }
+                .popover(isPresented: $showingPresets, arrowEdge: .bottom) {
+                    PresetListPopover(
+                        model: model,
+                        onApply: { name in model.applyPreset(name); showingPresets = false },
+                        onUpdate: { name in model.updatePreset(name); showingPresets = false },
+                        onRename: { name in showingPresets = false; renameText = name; renameTarget = name },
+                        onDelete: { name in showingPresets = false; deleteTarget = name },
+                        onSave: { showingPresets = false; showingSavePreset = true })
                 }
-                Divider()
-                Button("Save Preset…") { showingSavePreset = true }
-                    .disabled(!model.hasImage)
-            }
 
             Button("Export…") { showingExport = true }
                 .disabled(!model.hasImage)
         }
+    }
+
+    private var renamePresented: Binding<Bool> {
+        Binding(get: { renameTarget != nil }, set: { if !$0 { renameTarget = nil } })
+    }
+
+    private var deletePresented: Binding<Bool> {
+        Binding(get: { deleteTarget != nil }, set: { if !$0 { deleteTarget = nil } })
     }
 
     private func runExport(_ settings: ExportSettings) {

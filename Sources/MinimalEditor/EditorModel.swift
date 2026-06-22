@@ -28,6 +28,8 @@ final class EditorModel: ObservableObject {
 
     var hasImage: Bool { fullResImage != nil }
 
+    var imagePixelWidth: Int? { fullResImage.map { Int($0.extent.width.rounded()) } }
+
     // MARK: - Opening
 
     func open(url: URL) {
@@ -120,11 +122,11 @@ final class EditorModel: ObservableObject {
 
     // MARK: - Export
 
-    func export(to url: URL, format: ExportFormat) {
+    func export(to url: URL, settings: ExportSettings) {
         guard let fullResImage else { return }
         let rendered = Pipeline.apply(to: fullResImage, params: params, lut: lut)
         do {
-            try Exporter.write(rendered, to: url, format: format, context: context)
+            try Exporter.write(rendered, to: url, settings: settings, context: context)
             status = "Exported \(url.lastPathComponent)."
         } catch {
             status = "Export failed: \(error.localizedDescription)"

@@ -1,11 +1,12 @@
 import MinimalEditorCore
 import SwiftUI
-import UniformTypeIdentifiers
 
 struct ContentView: View {
     @StateObject private var model = EditorModel()
     @State private var showingSavePreset = false
     @State private var newPresetName = ""
+    @State private var showingExport = false
+    @State private var pendingExport: ExportSettings?
 
     var body: some View {
         HSplitView {
@@ -27,6 +28,16 @@ struct ContentView: View {
             }
         } message: {
             Text("Saves the current look, including the LUT.")
+        }
+        .sheet(isPresented: $showingExport, onDismiss: {
+            if let settings = pendingExport {
+                pendingExport = nil
+                runExport(settings)
+            }
+        }) {
+            ExportSheet(imageWidth: model.imagePixelWidth) { settings in
+                pendingExport = settings
+            }
         }
     }
 
@@ -51,23 +62,16 @@ struct ContentView: View {
                     .disabled(!model.hasImage)
             }
 
-            Menu("Export") {
-                Button("PNG…") { export(.png) }
-                Button("JPEG…") { export(.jpeg(quality: 0.92)) }
-            }
-            .disabled(!model.hasImage)
+            Button("Export…") { showingExport = true }
+                .disabled(!model.hasImage)
         }
     }
 
-    private func export(_ format: ExportFormat) {
+    private func runExport(_ settings: ExportSettings) {
         let base = (model.imageName as NSString?)?.deletingPathExtension ?? "Untitled"
-        let type: UTType = {
-            if case .png = format { return .png }
-            return .jpeg
-        }()
-        let suggested = "\(base).\(format.fileExtension)"
-        if let url = Panels.save(suggestedName: suggested, type: type) {
-            model.export(to: url, format: format)
+        let suggested = "\(base).\(settings.format.fileExtension)"
+        if let url = Panels.save(suggestedName: suggested, type: settings.format.utType) {
+            model.export(to: url, settings: settings)
         }
     }
 }

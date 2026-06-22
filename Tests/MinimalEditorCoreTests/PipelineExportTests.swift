@@ -67,15 +67,47 @@ final class PipelineExportTests: XCTestCase {
 
         let png = dir.appendingPathComponent("out.png")
         let jpg = dir.appendingPathComponent("out.jpg")
-        try Exporter.write(rendered, to: png, format: .png, context: context)
-        try Exporter.write(rendered, to: jpg, format: .jpeg(quality: 0.9), context: context)
+        let avif = dir.appendingPathComponent("out.avif")
+        try Exporter.write(rendered, to: png, settings: ExportSettings(format: .png), context: context)
+        try Exporter.write(rendered, to: jpg, settings: ExportSettings(format: .jpeg, quality: 0.9), context: context)
+        try Exporter.write(rendered, to: avif, settings: ExportSettings(format: .avif, quality: 0.6), context: context)
 
-        for url in [png, jpg] {
+        for url in [png, jpg, avif] {
             XCTAssertTrue(FileManager.default.fileExists(atPath: url.path), "\(url.lastPathComponent) missing")
-            let src = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil))
-            let image = try XCTUnwrap(CGImageSourceCreateImageAtIndex(src, 0, nil))
+            let image = try readImage(url)
             XCTAssertEqual(image.width, 80)
             XCTAssertEqual(image.height, 60)
         }
+    }
+
+    /// Max width scales the image down (aspect preserved) only when it's wider.
+    func testMaxWidthDownscale() throws {
+        let source = CIImage(color: CIColor(red: 0.2, green: 0.6, blue: 0.4))
+            .cropped(to: CGRect(x: 0, y: 0, width: 80, height: 60))
+        let rendered = Pipeline.apply(to: source, params: Params(), lut: nil)
+
+        let dir = URL(fileURLWithPath: NSTemporaryDirectory())
+            .appendingPathComponent("MinimalEditorExport-\(UUID().uuidString)")
+        try FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: dir) }
+
+        // Narrower than the source: scales to width 40, height follows to 30.
+        let small = dir.appendingPathComponent("small.png")
+        try Exporter.write(rendered, to: small, settings: ExportSettings(format: .png, maxWidth: 40), context: context)
+        let smallImage = try readImage(small)
+        XCTAssertEqual(smallImage.width, 40)
+        XCTAssertEqual(smallImage.height, 30)
+
+        // Wider than the source: left at full resolution.
+        let big = dir.appendingPathComponent("big.png")
+        try Exporter.write(rendered, to: big, settings: ExportSettings(format: .png, maxWidth: 999), context: context)
+        let bigImage = try readImage(big)
+        XCTAssertEqual(bigImage.width, 80)
+        XCTAssertEqual(bigImage.height, 60)
+    }
+
+    private func readImage(_ url: URL) throws -> CGImage {
+        let src = try XCTUnwrap(CGImageSourceCreateWithURL(url as CFURL, nil))
+        return try XCTUnwrap(CGImageSourceCreateImageAtIndex(src, 0, nil))
     }
 }
